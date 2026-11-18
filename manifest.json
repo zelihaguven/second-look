@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "Second Look",
+  "version": "0.1.0",
+  "description": "Slow down for three seconds before you trust an AI answer. Runs on-device first.",
+  "minimum_chrome_version": "139",
+  "permissions": ["contextMenus", "sidePanel", "storage"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "action": {
+    "default_title": "Open Second Look"
+  }
+}

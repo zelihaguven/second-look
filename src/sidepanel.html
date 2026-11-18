@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Second Look</title>
+    <link rel="stylesheet" href="./sidepanel.css" />
+  </head>
+  <body>
+    <header class="masthead">
+      <p class="eyebrow">Before you trust it</p>
+      <h1>Second Look</h1>
+    </header>
+
+    <main>
+      <section id="empty-state" class="empty" aria-labelledby="empty-heading">
+        <h2 id="empty-heading">Nothing selected yet</h2>
+        <p>
+          Select an AI answer on any page, right-click, and choose
+          <strong>Second Look</strong>.
+        </p>
+      </section>
+
+      <section id="selection-view" aria-labelledby="selection-heading" hidden>
+        <h2 id="selection-heading">Selected text</h2>
+        <blockquote id="selection-text" class="selection"></blockquote>
+        <p id="selection-meta" class="meta"></p>
+      </section>
+    </main>
+
+    <footer>
+      <p id="firebase-status" class="status" role="status" data-state="pending">
+        Checking Firebase…
+      </p>
+    </footer>
+
+    <script type="module" src="./sidepanel.ts"></script>
+  </body>
+</html>

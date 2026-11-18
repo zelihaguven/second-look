@@ -1,0 +1,8 @@
+node_modules/
+dist/
+
+# Secrets: never commit these (see README)
+src/firebaseConfig.ts
+.env
+.env.*
+!.env.example
