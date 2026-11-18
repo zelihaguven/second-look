@@ -25,6 +25,23 @@
         <h2 id="selection-heading">Selected text</h2>
         <blockquote id="selection-text" class="selection"></blockquote>
         <p id="selection-meta" class="meta"></p>
+
+        <button id="quick-check-button" class="primary" type="button">
+          Run quick check
+        </button>
+        <p id="check-progress" class="meta" role="status" hidden></p>
+        <p id="check-error" class="error" role="alert" hidden></p>
+      </section>
+
+      <section id="result-view" aria-labelledby="result-heading" hidden>
+        <div class="result-head">
+          <h2 id="result-heading">Quick check</h2>
+          <span id="engine-badge" class="badge"></span>
+        </div>
+        <p id="result-notice" class="notice" hidden></p>
+        <p id="result-summary" class="summary"></p>
+        <ol id="claim-list" class="claims"></ol>
+        <pre id="raw-output" class="raw" hidden></pre>
       </section>
     </main>
 
