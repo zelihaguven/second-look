@@ -3,7 +3,7 @@
 A Chrome extension that slows you down for three seconds before you trust an AI answer.
 It runs on-device first, so your text stays in the browser.
 
-> Status: skeleton (context menu → side panel shows the selected text, Firebase + App Check wired).
+> Status: quick check works end to end in code (on-device first, cloud fallback, engine badge). Trust flow, trust log and deep check are next.
 
 ## Setup
 
@@ -55,7 +55,8 @@ Select text on any page, right-click, choose **Second Look**.
 | `manifest.json` | MV3 manifest (`contextMenus`, `sidePanel`, `storage`) |
 | `src/background.ts` | Context menu → opens the side panel, passes the selected text |
 | `src/sidepanel.html` / `.ts` / `.css` | Side panel UI |
-| `src/ai.ts` | Firebase init and App Check; Firebase AI Logic calls go here |
+| `src/ai.ts` | Firebase init, App Check, and the Firebase AI Logic hybrid call (`quickCheck()`, `InferenceMode.PREFER_ON_DEVICE`) |
+| `src/prompts.ts` | System prompt, JSON Schema, output validation |
 | `src/storage.ts` | Selection hand-off (`chrome.storage.session`) |
 
 ## License
