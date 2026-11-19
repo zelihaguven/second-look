@@ -51,9 +51,9 @@ export class NotConfiguredError extends Error {
 }
 
 /** Cloud model used when Gemini Nano is not available on this machine. */
-const CLOUD_FALLBACK_MODEL = "gemini-2.5-flash-lite";
-/** Cloud model for the deep check. Must support Grounding with Google Search. */
-const DEEP_CHECK_MODEL = "gemini-2.5-flash";
+const CLOUD_FALLBACK_MODEL = "gemini-3.5-flash-lite";
+/** Cloud model for the deep check. Must be on Firebase's Grounding with Google Search supported list. */
+const DEEP_CHECK_MODEL = "gemini-3.8-flash";
 const MAX_ATTEMPTS = 2;
 
 // Optional import: the build still works before src/firebaseConfig.ts exists.

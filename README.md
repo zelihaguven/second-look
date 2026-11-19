@@ -7,7 +7,7 @@ It runs on-device first, so your text stays in the browser.
 
 ## Setup
 
-Requires Node 20+ and Chrome 139+.
+Requires Node 20+ and Chrome 139+. Uses the Firebase JS SDK 12.5.0 or later (bundled; `npm install` currently resolves 12.19.0).
 
 ```bash
 npm install
@@ -63,7 +63,7 @@ It lives in `chrome.storage.local` and is never uploaded. Only the first 80 char
 | `manifest.json` | MV3 manifest (`contextMenus`, `sidePanel`, `storage`) |
 | `src/background.ts` | Context menu → opens the side panel, passes the selected text |
 | `src/sidepanel.html` / `.ts` / `.css` | Side panel UI |
-| `src/ai.ts` | Firebase init, App Check, and the Firebase AI Logic calls: `quickCheck()` (`InferenceMode.PREFER_ON_DEVICE`, Gemini Nano with `gemini-2.5-flash-lite` fallback) and `deepCheck()` (`InferenceMode.ONLY_IN_CLOUD`, `gemini-2.5-flash` with `tools: [{ googleSearch: {} }]`) |
+| `src/ai.ts` | Firebase init, App Check, and the Firebase AI Logic calls: `quickCheck()` (`InferenceMode.PREFER_ON_DEVICE`, Gemini Nano with `gemini-3.5-flash-lite` fallback) and `deepCheck()` (`InferenceMode.ONLY_IN_CLOUD`, `gemini-3.8-flash` with `tools: [{ googleSearch: {} }]`) |
 | `src/prompts.ts` | Prompts, JSON Schema, output validation, verdict and source parsing |
 | `src/storage.ts` | Selection hand-off (`chrome.storage.session`) and the trust log (`chrome.storage.local`) |
 
