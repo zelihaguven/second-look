@@ -1,8 +1,10 @@
 import { describe, expect, test } from "vitest";
 import {
+  collectSources,
   MAX_CLAIMS,
   MAX_INPUT_CHARS,
   parseQuickCheck,
+  parseVerdict,
   prepareInput,
 } from "./prompts";
 
@@ -75,5 +77,46 @@ describe("prepareInput", () => {
 
     expect(prepared.text).toHaveLength(MAX_INPUT_CHARS);
     expect(prepared.wasTruncated).toBe(true);
+  });
+});
+
+describe("parseVerdict", () => {
+  test("reads the verdict line and keeps the explanation", () => {
+    expect(parseVerdict("VERDICT: CONTRADICTED\nNo such paper exists in Google Scholar.")).toEqual({
+      verdict: "contradicted",
+      explanation: "No such paper exists in Google Scholar.",
+    });
+  });
+
+  test("tolerates markdown and lower case", () => {
+    expect(parseVerdict("**Verdict:** supported\nThe tower is 330 m tall.").verdict).toBe("supported");
+  });
+
+  test("treats a reply without a verdict as unclear", () => {
+    expect(parseVerdict("I could not find anything.")).toEqual({
+      verdict: "unclear",
+      explanation: "I could not find anything.",
+    });
+  });
+});
+
+describe("collectSources", () => {
+  test("keeps web sources, drops duplicates and non-http links", () => {
+    const sources = collectSources([
+      { web: { uri: "https://example.org/a", title: "Example" } },
+      { web: { uri: "https://example.org/a", title: "Example again" } },
+      { web: { uri: "javascript:alert(1)", title: "Bad" } },
+      { web: { uri: "https://news.example.com/b" } },
+      {},
+    ]);
+
+    expect(sources).toEqual([
+      { uri: "https://example.org/a", title: "Example" },
+      { uri: "https://news.example.com/b", title: "news.example.com" },
+    ]);
+  });
+
+  test("returns an empty list when there is no metadata", () => {
+    expect(collectSources(undefined)).toEqual([]);
   });
 });

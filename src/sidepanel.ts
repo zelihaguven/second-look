@@ -1,10 +1,12 @@
 import {
+  deepCheck,
   initFirebase,
   quickCheck,
+  type DeepCheckItem,
   type FirebaseStatus,
   type QuickCheckOutcome,
 } from "./ai";
-import type { Claim } from "./prompts";
+import type { Claim, Verdict } from "./prompts";
 import {
   appendTrustLog,
   clearTrustLog,
@@ -55,6 +57,16 @@ const statTypes = requireElement("stat-types");
 const logListHeading = requireElement("log-list-heading");
 const logList = requireElement("log-list");
 const clearLogButton = requireElement<HTMLButtonElement>("clear-log-button");
+const deepSection = requireElement("deep-check");
+const deepIntro = requireElement("deep-intro");
+const deepStartButton = requireElement<HTMLButtonElement>("deep-start-button");
+const deepConsent = requireElement("deep-consent");
+const deepConsentClaims = requireElement("deep-consent-claims");
+const deepSendButton = requireElement<HTMLButtonElement>("deep-send-button");
+const deepCancelButton = requireElement<HTMLButtonElement>("deep-cancel-button");
+const deepProgress = requireElement("deep-progress");
+const deepError = requireElement("deep-error");
+const deepResults = requireElement("deep-results");
 
 interface TrustScale {
   reset(): void;
@@ -127,6 +139,7 @@ function resetCheck(): void {
   quickCheckButton.disabled = trustBefore === null;
   resultView.hidden = true;
   afterScale.reset();
+  resetDeepCheck();
   setText(trustChange, "");
   setText(checkProgress, "");
   setText(checkError, "");
@@ -215,7 +228,183 @@ function renderOutcome(outcome: QuickCheckOutcome): void {
     claimList.replaceChildren(...claims.map(createClaimItem));
     setText(rawOutput, "");
   }
+  renderDeepCheckOffer(outcome);
   resultView.hidden = false;
+}
+
+// Deep check
+
+const VERDICT_LABELS: Record<Verdict, string> = {
+  supported: "Supported by sources",
+  contradicted: "Contradicted by sources",
+  unclear: "Unclear",
+};
+
+function highRiskClaims(outcome: QuickCheckOutcome | null): Claim[] {
+  if (outcome?.kind !== "result") return [];
+  return outcome.result.claims.filter((claim) => claim.risk === "high");
+}
+
+function resetDeepCheck(): void {
+  deepSection.hidden = true;
+  deepStartButton.hidden = true;
+  deepStartButton.disabled = false;
+  deepConsent.hidden = true;
+  deepResults.replaceChildren();
+  setText(deepIntro, "");
+  setText(deepProgress, "");
+  setText(deepError, "");
+}
+
+function renderDeepCheckOffer(outcome: QuickCheckOutcome): void {
+  resetDeepCheck();
+  if (outcome.kind !== "result") return;
+
+  const claims = highRiskClaims(outcome);
+  deepSection.hidden = false;
+  if (claims.length === 0) {
+    setText(deepIntro, "No high-risk claims, so there is nothing to search the web for.");
+    return;
+  }
+  setText(
+    deepIntro,
+    "Search the web for the high-risk claims and see sources. Nothing is sent until you confirm.",
+  );
+  deepStartButton.textContent = `Deep check ${claims.length} high-risk ${
+    claims.length === 1 ? "claim" : "claims"
+  }`;
+  deepStartButton.hidden = false;
+}
+
+function showDeepConsent(): void {
+  const claims = highRiskClaims(lastOutcome);
+  if (claims.length === 0) return;
+  deepConsentClaims.replaceChildren(
+    ...claims.map((claim) => {
+      const item = document.createElement("li");
+      item.textContent = `“${claim.text}”`;
+      return item;
+    }),
+  );
+  deepStartButton.hidden = true;
+  deepConsent.hidden = false;
+  deepSendButton.focus();
+}
+
+function cancelDeepConsent(): void {
+  deepConsent.hidden = true;
+  deepStartButton.hidden = false;
+  deepStartButton.focus();
+}
+
+/** Google Search suggestions, shown unchanged in a shadow root so page CSS cannot touch them. */
+function createSearchEntryPoint(html: string): HTMLDivElement {
+  const host = document.createElement("div");
+  host.className = "search-entry-point";
+  const root = host.attachShadow({ mode: "open" });
+  root.innerHTML = html;
+  // The side panel must not navigate away; open suggestions in a new tab instead.
+  for (const link of root.querySelectorAll("a")) {
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+  }
+  return host;
+}
+
+function createDeepItem(item: DeepCheckItem): HTMLLIElement {
+  const element = document.createElement("li");
+  element.className = "deep-item";
+
+  const quote = document.createElement("blockquote");
+  quote.className = "claim-quote";
+  quote.textContent = `“${item.claim.text}”`;
+
+  if (item.kind === "failure") {
+    element.dataset.verdict = "failed";
+    const message = document.createElement("p");
+    message.className = "error";
+    message.textContent = `This claim could not be checked. ${item.message}`;
+    element.append(quote, message);
+    return element;
+  }
+
+  element.dataset.verdict = item.verdict;
+  const verdict = document.createElement("span");
+  verdict.className = "deep-verdict";
+  verdict.textContent = VERDICT_LABELS[item.verdict];
+  element.append(verdict, quote);
+
+  if (item.explanation) {
+    const explanation = document.createElement("p");
+    explanation.className = "claim-detail";
+    explanation.textContent = item.explanation;
+    element.append(explanation);
+  }
+
+  const sourcesHeading = document.createElement("p");
+  sourcesHeading.className = "sources-heading";
+  sourcesHeading.textContent = item.sources.length > 0 ? "Sources" : "No sources returned.";
+  element.append(sourcesHeading);
+
+  if (item.sources.length > 0) {
+    const list = document.createElement("ul");
+    list.className = "sources";
+    for (const source of item.sources) {
+      const link = document.createElement("a");
+      link.href = source.uri;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = source.title;
+      const entry = document.createElement("li");
+      entry.append(link);
+      list.append(entry);
+    }
+    element.append(list);
+  }
+
+  if (item.searchEntryPointHtml) {
+    element.append(createSearchEntryPoint(item.searchEntryPointHtml));
+  }
+  return element;
+}
+
+async function runDeepCheck(): Promise<void> {
+  const claims = highRiskClaims(lastOutcome);
+  if (claims.length === 0) return;
+  const thisRun = runId;
+
+  deepConsent.hidden = true;
+  setText(deepError, "");
+  if (!navigator.onLine) {
+    setText(deepError, "You are offline. The deep check needs the internet to search the web.");
+    deepStartButton.hidden = false;
+    return;
+  }
+
+  setText(deepProgress, `Searching the web for ${claims.length} ${claims.length === 1 ? "claim" : "claims"}…`);
+  try {
+    const items = await deepCheck(claims);
+    if (thisRun !== runId) return;
+    deepResults.replaceChildren(...items.map(createDeepItem));
+    setText(deepIntro, "Only the high-risk claims were sent. Open the sources before you decide.");
+    if (items.every((item) => item.kind === "failure")) {
+      setText(
+        deepError,
+        navigator.onLine
+          ? "The deep check failed. Try again in a moment."
+          : "You went offline during the deep check. Reconnect and try again.",
+      );
+      deepStartButton.hidden = false;
+    }
+  } catch (error: unknown) {
+    if (thisRun !== runId) return;
+    console.error("[Second Look] Deep check failed", error);
+    const message = error instanceof Error ? error.message : String(error);
+    setText(deepError, `The deep check failed. ${message}`);
+    deepStartButton.hidden = false;
+  } finally {
+    if (thisRun === runId) setText(deepProgress, "");
+  }
 }
 
 function describeError(error: unknown): string {
@@ -397,6 +586,9 @@ function renderFirebaseStatus(status: FirebaseStatus): void {
 
 async function start(): Promise<void> {
   quickCheckButton.addEventListener("click", () => void runQuickCheck());
+  deepStartButton.addEventListener("click", showDeepConsent);
+  deepCancelButton.addEventListener("click", cancelDeepConsent);
+  deepSendButton.addEventListener("click", () => void runDeepCheck());
   tabCheck.addEventListener("click", () => showView("check"));
   tabLog.addEventListener("click", () => showView("log"));
   clearLogButton.addEventListener("click", () => {

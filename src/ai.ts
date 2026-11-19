@@ -11,12 +11,19 @@ import {
 } from "firebase/ai";
 import { CustomProvider, getToken, initializeAppCheck } from "firebase/app-check";
 import {
+  buildDeepCheckPrompt,
   buildQuickCheckPrompt,
+  collectSources,
+  DEEP_CHECK_SYSTEM_PROMPT,
   parseQuickCheck,
+  parseVerdict,
   prepareInput,
   QUICK_CHECK_SCHEMA,
   SYSTEM_PROMPT,
+  type Claim,
   type QuickCheckResult,
+  type Source,
+  type Verdict,
 } from "./prompts";
 
 export type FirebaseStatus =
@@ -45,6 +52,8 @@ export class NotConfiguredError extends Error {
 
 /** Cloud model used when Gemini Nano is not available on this machine. */
 const CLOUD_FALLBACK_MODEL = "gemini-2.5-flash-lite";
+/** Cloud model for the deep check. Must support Grounding with Google Search. */
+const DEEP_CHECK_MODEL = "gemini-2.5-flash";
 const MAX_ATTEMPTS = 2;
 
 // Optional import: the build still works before src/firebaseConfig.ts exists.
@@ -61,6 +70,7 @@ interface FirebaseContext {
 
 let context: FirebaseContext | null = null;
 let quickModel: GenerativeModel | null = null;
+let deepModel: GenerativeModel | null = null;
 
 function getContext(): FirebaseContext {
   if (context) return context;
@@ -101,11 +111,14 @@ export async function initFirebase(): Promise<FirebaseStatus> {
   }
 }
 
+function getAIInstance(): ReturnType<typeof getAI> {
+  return getAI(getContext().app, { backend: new GoogleAIBackend() });
+}
+
 function getQuickModel(): GenerativeModel {
   if (quickModel) return quickModel;
 
-  const ai = getAI(getContext().app, { backend: new GoogleAIBackend() });
-  quickModel = getGenerativeModel(ai, {
+  quickModel = getGenerativeModel(getAIInstance(), {
     mode: InferenceMode.PREFER_ON_DEVICE,
     onDeviceParams: {
       createOptions: {
@@ -160,4 +173,73 @@ export async function quickCheck(
     }
   }
   return { kind: "raw", rawText, engine, wasTruncated: input.wasTruncated };
+}
+
+export interface DeepCheckFinding {
+  readonly kind: "finding";
+  readonly claim: Claim;
+  readonly verdict: Verdict;
+  readonly explanation: string;
+  readonly sources: readonly Source[];
+  /**
+   * Google Search suggestions (HTML/CSS). The grounding terms require showing it
+   * unchanged next to the grounded answer.
+   */
+  readonly searchEntryPointHtml: string | null;
+}
+
+export interface DeepCheckFailure {
+  readonly kind: "failure";
+  readonly claim: Claim;
+  readonly message: string;
+}
+
+export type DeepCheckItem = DeepCheckFinding | DeepCheckFailure;
+
+function getDeepModel(): GenerativeModel {
+  if (deepModel) return deepModel;
+
+  deepModel = getGenerativeModel(getAIInstance(), {
+    mode: InferenceMode.ONLY_IN_CLOUD,
+    inCloudParams: {
+      model: DEEP_CHECK_MODEL,
+      systemInstruction: DEEP_CHECK_SYSTEM_PROMPT,
+      tools: [{ googleSearch: {} }],
+    },
+  });
+  return deepModel;
+}
+
+async function deepCheckClaim(model: GenerativeModel, claim: Claim): Promise<DeepCheckFinding> {
+  const { response } = await model.generateContent(buildDeepCheckPrompt(claim));
+  const metadata = response.candidates?.[0]?.groundingMetadata;
+  const { verdict, explanation } = parseVerdict(response.text());
+  return {
+    kind: "finding",
+    claim,
+    verdict,
+    explanation,
+    sources: collectSources(metadata?.groundingChunks),
+    searchEntryPointHtml: metadata?.searchEntryPoint?.renderedContent ?? null,
+  };
+}
+
+/**
+ * Cloud only, after explicit consent: sends just the given claims (not the selected text)
+ * to Gemini with Grounding with Google Search, one request per claim, in parallel.
+ * A claim that fails does not fail the others.
+ */
+export async function deepCheck(claims: readonly Claim[]): Promise<DeepCheckItem[]> {
+  const model = getDeepModel();
+  const settled = await Promise.allSettled(claims.map((claim) => deepCheckClaim(model, claim)));
+  return settled.map((outcome, index): DeepCheckItem => {
+    if (outcome.status === "fulfilled") return outcome.value;
+    console.error("[Second Look] Deep check failed for a claim", outcome.reason);
+    const reason: unknown = outcome.reason;
+    return {
+      kind: "failure",
+      claim: claims[index],
+      message: reason instanceof Error ? reason.message : String(reason),
+    };
+  });
 }

@@ -55,6 +55,32 @@
         <ol id="claim-list" class="claims"></ol>
         <pre id="raw-output" class="raw" hidden></pre>
 
+        <section id="deep-check" class="deep" aria-labelledby="deep-heading" hidden>
+          <div class="result-head">
+            <h3 id="deep-heading">Deep check</h3>
+            <span class="badge" data-engine="cloud">Cloud · Google Search</span>
+          </div>
+          <p id="deep-intro" class="meta"></p>
+          <button id="deep-start-button" class="secondary" type="button" hidden></button>
+
+          <div id="deep-consent" class="consent" role="dialog" aria-labelledby="deep-consent-heading" hidden>
+            <p id="deep-consent-heading" class="consent-title">This leaves your device</p>
+            <p>
+              Only these claims are sent to Google's Gemini API, which searches the web.
+              The rest of the selected text stays here.
+            </p>
+            <ul id="deep-consent-claims" class="consent-claims"></ul>
+            <div class="consent-actions">
+              <button id="deep-send-button" class="primary" type="button">Send and search</button>
+              <button id="deep-cancel-button" class="secondary" type="button">Cancel</button>
+            </div>
+          </div>
+
+          <p id="deep-progress" class="meta" role="status" hidden></p>
+          <p id="deep-error" class="error" role="alert" hidden></p>
+          <ol id="deep-results" class="deep-results"></ol>
+        </section>
+
         <fieldset id="trust-after" class="scale">
           <legend><span class="step">Step 3</span> Now how much do you trust it?</legend>
           <div class="scale-options"></div>

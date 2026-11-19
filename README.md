@@ -3,7 +3,7 @@
 A Chrome extension that slows you down for three seconds before you trust an AI answer.
 It runs on-device first, so your text stays in the browser.
 
-> Status: trust → quick check → re-trust flow and the local trust log work in code (on-device first, cloud fallback, engine badge). Deep check with Google Search grounding is next.
+> Status: the full MVP flow is in code: trust → quick check (on-device first, cloud fallback, engine badge) → optional deep check (cloud, Google Search grounding, consent) → re-trust, plus the local trust log. Next: real-device testing with `test-cases/`, polish, demo.
 
 ## Setup
 
@@ -50,7 +50,8 @@ Select text on any page, right-click, choose **Second Look**. Then:
 
 1. **Commit first.** Rate how much you trust the answer (1–5). The quick check stays locked until you do, and the rating can't be changed once the analysis is shown.
 2. **Quick check.** Claims are flagged by type and risk. The badge shows which engine answered (`On-device` / `Cloud`).
-3. **Re-rate.** Rate again and see the change.
+3. **Deep check (optional).** If any claim is high risk, you can search the web for it. A notice lists exactly what will be sent (only the high-risk claims, never the full text), and nothing leaves the device until you confirm. Each claim gets a verdict (supported, contradicted, unclear), source links and Google Search suggestions.
+4. **Re-rate.** Rate again and see the change.
 
 **My trust log** (tab at the top) shows how often your trust dropped, the average change, the claim types flagged most (medium or high risk) and your last 20 checks.
 It lives in `chrome.storage.local` and is never uploaded. Only the first 80 characters of each checked text are kept.
@@ -62,9 +63,22 @@ It lives in `chrome.storage.local` and is never uploaded. Only the first 80 char
 | `manifest.json` | MV3 manifest (`contextMenus`, `sidePanel`, `storage`) |
 | `src/background.ts` | Context menu → opens the side panel, passes the selected text |
 | `src/sidepanel.html` / `.ts` / `.css` | Side panel UI |
-| `src/ai.ts` | Firebase init, App Check, and the Firebase AI Logic hybrid call (`quickCheck()`, `InferenceMode.PREFER_ON_DEVICE`) |
-| `src/prompts.ts` | System prompt, JSON Schema, output validation |
+| `src/ai.ts` | Firebase init, App Check, and the Firebase AI Logic calls: `quickCheck()` (`InferenceMode.PREFER_ON_DEVICE`, Gemini Nano with `gemini-2.5-flash-lite` fallback) and `deepCheck()` (`InferenceMode.ONLY_IN_CLOUD`, `gemini-2.5-flash` with `tools: [{ googleSearch: {} }]`) |
+| `src/prompts.ts` | Prompts, JSON Schema, output validation, verdict and source parsing |
 | `src/storage.ts` | Selection hand-off (`chrome.storage.session`) and the trust log (`chrome.storage.local`) |
+
+## Grounding with Google Search
+
+The deep check uses Grounding with Google Search, so its display requirements apply
+([Gemini API terms](https://ai.google.dev/gemini-api/terms#grounding-with-google-search)).
+Each grounded result shows its source links and the Google Search suggestions
+(`searchEntryPoint.renderedContent`) unchanged, inside a shadow root as the SDK recommends.
+Links open in a new tab.
+
+## Test cases
+
+`test-cases/` has five AI-style answers with known-wrong claims and the expected flags.
+See `test-cases/README.md` for how to run them.
 
 ## License
 
