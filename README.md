@@ -3,7 +3,7 @@
 A Chrome extension that slows you down for three seconds before you trust an AI answer.
 It runs on-device first, so your text stays in the browser.
 
-> Status: quick check works end to end in code (on-device first, cloud fallback, engine badge). Trust flow, trust log and deep check are next.
+> Status: trust → quick check → re-trust flow and the local trust log work in code (on-device first, cloud fallback, engine badge). Deep check with Google Search grounding is next.
 
 ## Setup
 
@@ -46,7 +46,14 @@ and set `VITE_APPCHECK_DEBUG_TOKEN`. Never commit a debug token.
 
 ## Use
 
-Select text on any page, right-click, choose **Second Look**.
+Select text on any page, right-click, choose **Second Look**. Then:
+
+1. **Commit first.** Rate how much you trust the answer (1–5). The quick check stays locked until you do, and the rating can't be changed once the analysis is shown.
+2. **Quick check.** Claims are flagged by type and risk. The badge shows which engine answered (`On-device` / `Cloud`).
+3. **Re-rate.** Rate again and see the change.
+
+**My trust log** (tab at the top) shows how often your trust dropped, the average change, the claim types flagged most (medium or high risk) and your last 20 checks.
+It lives in `chrome.storage.local` and is never uploaded. Only the first 80 characters of each checked text are kept.
 
 ## Where things live
 
@@ -57,7 +64,7 @@ Select text on any page, right-click, choose **Second Look**.
 | `src/sidepanel.html` / `.ts` / `.css` | Side panel UI |
 | `src/ai.ts` | Firebase init, App Check, and the Firebase AI Logic hybrid call (`quickCheck()`, `InferenceMode.PREFER_ON_DEVICE`) |
 | `src/prompts.ts` | System prompt, JSON Schema, output validation |
-| `src/storage.ts` | Selection hand-off (`chrome.storage.session`) |
+| `src/storage.ts` | Selection hand-off (`chrome.storage.session`) and the trust log (`chrome.storage.local`) |
 
 ## License
 

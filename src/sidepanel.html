@@ -10,9 +10,14 @@
     <header class="masthead">
       <p class="eyebrow">Before you trust it</p>
       <h1>Second Look</h1>
+      <nav class="tabs" aria-label="Views">
+        <button id="tab-check" class="tab" type="button" aria-pressed="true">Check</button>
+        <button id="tab-log" class="tab" type="button" aria-pressed="false">My trust log</button>
+      </nav>
     </header>
 
     <main>
+     <div id="check-view">
       <section id="empty-state" class="empty" aria-labelledby="empty-heading">
         <h2 id="empty-heading">Nothing selected yet</h2>
         <p>
@@ -26,9 +31,16 @@
         <blockquote id="selection-text" class="selection"></blockquote>
         <p id="selection-meta" class="meta"></p>
 
-        <button id="quick-check-button" class="primary" type="button">
+        <fieldset id="trust-before" class="scale">
+          <legend><span class="step">Step 1</span> How much do you trust this answer?</legend>
+          <div class="scale-options"></div>
+          <p class="scale-ends"><span>Not at all</span><span>Completely</span></p>
+        </fieldset>
+
+        <button id="quick-check-button" class="primary" type="button" disabled>
           Run quick check
         </button>
+        <p id="check-hint" class="meta">Rate your trust first. Then you get the analysis.</p>
         <p id="check-progress" class="meta" role="status" hidden></p>
         <p id="check-error" class="error" role="alert" hidden></p>
       </section>
@@ -42,6 +54,39 @@
         <p id="result-summary" class="summary"></p>
         <ol id="claim-list" class="claims"></ol>
         <pre id="raw-output" class="raw" hidden></pre>
+
+        <fieldset id="trust-after" class="scale">
+          <legend><span class="step">Step 3</span> Now how much do you trust it?</legend>
+          <div class="scale-options"></div>
+          <p class="scale-ends"><span>Not at all</span><span>Completely</span></p>
+        </fieldset>
+        <p id="trust-change" class="change" role="status" hidden></p>
+      </section>
+     </div>
+
+      <section id="log-view" aria-labelledby="log-heading" hidden>
+        <h2 id="log-heading">My trust log</h2>
+        <p class="meta">Stored on this device only. Never uploaded.</p>
+
+        <p id="log-empty" class="log-empty" hidden>
+          No checks yet. Finish a check and re-rate your trust to see it here.
+        </p>
+
+        <div id="log-content" hidden>
+          <dl class="stats">
+            <div><dt>Checks</dt><dd id="stat-total"></dd></div>
+            <div><dt>Trust dropped</dt><dd id="stat-dropped"></dd></div>
+            <div><dt>Average change</dt><dd id="stat-average"></dd></div>
+          </dl>
+
+          <h3>Most flagged claim types</h3>
+          <ul id="stat-types" class="type-counts"></ul>
+
+          <h3 id="log-list-heading">Recent checks</h3>
+          <ol id="log-list" class="log-list"></ol>
+
+          <button id="clear-log-button" class="secondary" type="button">Clear log</button>
+        </div>
       </section>
     </main>
 
